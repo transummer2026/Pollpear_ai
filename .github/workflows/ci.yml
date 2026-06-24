@@ -21,6 +21,8 @@ jobs:
     uses: transummer2026/.github/.github/workflows/ci-service.yml@main
     with:
       service_name: ai
+      # TODO: brancher uv pour installer les deps avant lint/tests..
+      install_cmd: ""
       lint_cmd: ruff check .
       test_cmd: pytest
       build_cmd: docker build -t temp .
@@ -34,3 +36,4 @@ jobs:
       DISCORD_WEBHOOK_REPO: ${{ secrets.DISCORD_WEBHOOK_AI }}
       GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
       DISPATCH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
+      SEMANTIC_TOKEN: ${{ secrets.SEMANTIC_TOKEN }}
