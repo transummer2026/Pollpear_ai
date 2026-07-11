@@ -9,15 +9,15 @@ on:
     types: [ci-trigger]
   workflow_dispatch:
 
+# Annule les runs obsolètes quand on repush sur une PR ; jamais sur dev
+# (le build/push d'image doit aller au bout).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  trigger:
-    name: Trigger
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "CI ai déclenché"
 
   ci:
-    needs: trigger
     uses: transummer2026/.github/.github/workflows/ci-service.yml@main
     with:
       service_name: ai
