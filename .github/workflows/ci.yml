@@ -10,14 +10,10 @@ on:
   workflow_dispatch:
 
 jobs:
-  trigger:
-    name: Trigger
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "CI ai déclenché"
-
   ci:
-    needs: trigger
+    permissions:
+      contents: read
+      pull-requests: read
     uses: transummer2026/.github/.github/workflows/ci-service.yml@main
     with:
       service_name: ai
