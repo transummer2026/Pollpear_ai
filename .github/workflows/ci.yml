@@ -9,8 +9,8 @@ on:
     types: [ci-trigger]
   workflow_dispatch:
 
+jobs:
   ci:
-    needs: trigger
     uses: transummer2026/.github/.github/workflows/ci-service.yml@main
     with:
       service_name: ai
