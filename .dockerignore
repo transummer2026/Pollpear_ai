@@ -1,4 +1,4 @@
-# venvs & caches Python (ne jamais copier le venv host dans l'image)
+# venvs & caches Python
 .venv/
 venv/
 __pycache__/
