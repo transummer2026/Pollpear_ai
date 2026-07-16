@@ -18,7 +18,7 @@ jobs:
     with:
       service_name: ai
       # TODO: brancher uv pour installer les deps avant lint/tests..
-      install_cmd: ""
+      install_cmd: "pip install -r requirements-dev.txt"
       lint_cmd: ruff check .
       test_cmd: pytest
       build_cmd: docker build -t temp .
