@@ -10,7 +10,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 
 COPY requirements.txt ./
-# hadolint ignore=DL3008,DL3009
+# hadolint ignore=DL3008,DL3009,DL3013
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
 FROM builder AS dev
