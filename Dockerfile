@@ -14,6 +14,8 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 FROM builder AS dev
 COPY . .
+RUN useradd --create-home appuser && chown -R appuser /app
+USER appuser
 EXPOSE 3002
 CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "3002", "--reload"]
 
