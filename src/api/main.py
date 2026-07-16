@@ -1,16 +1,12 @@
-from uvicorn import run
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
-from logging import getLogger, StreamHandler, Formatter
 from prometheus_fastapi_instrumentator import Instrumentator
+from uvicorn import run
 
+from src.api.logger import get_logger, setup_logging
+from src.data.loader import load_feed
 
-logger = getLogger(__name__)
-handler = StreamHandler()
-formatter = Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
-logger.setLevel("INFO")
+setup_logging()
+logger = get_logger(__name__)
 
 app = FastAPI(title="Pollpear AI", version="0.1.0")
 
@@ -30,13 +26,13 @@ def root() -> dict[str, str]:
 
 
 @app.get("/feed/{user_id}")
-async def get_feed(user_id: str):
+def get_feed(user_id: int):
 	logger.info(f"Feed requested for user_id: {user_id}")
-	if user_id not in ["1", "2", "3"]:
-		logger.warning(f"User not found for user_id: {user_id}")
-		return JSONResponse(status_code=404, content={"error": "User not found"})
-	logger.info(f"Feed returned for user_id: {user_id}")
-	return JSONResponse(content={"user_id": user_id, "feed": f"Feed for user {user_id}"})
+	rows = load_feed(9)
+	pairs = zip(rows.poll_id.tolist(), rows.title.tolist(), strict=True)
+	feed = [{"poll_id": int(pid), "title": str(title)} for pid, title in pairs]
+	logger.info(f"Feed returned for user_id: {user_id} ({len(feed)} polls)")
+	return {"user_id": user_id, "feed": feed}
 
 
 
@@ -45,5 +41,5 @@ def start() -> None:
 
 
 if __name__ == "__main__":
+	logger.info("Pollpear AI service started")
 	start()
-	logger.info("Pollpear AI service started on http://localhost:3002")

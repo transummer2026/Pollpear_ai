@@ -1,8 +1,9 @@
 import os
-from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
+import threading
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import pandas as pd
-import psycopg
+from sqlalchemy import Engine, create_engine, text
 
 INTERACTIONS_SQL = """
 SELECT DISTINCT v.created_by AS user_id, o.poll_id AS poll_id
@@ -23,23 +24,38 @@ FROM polls
 WHERE status = 'active' AND visibility = 'public'
 """
 
+FEED_SQL = """
+SELECT id AS poll_id, title
+FROM polls
+WHERE status = 'active' AND visibility = 'public'
+ORDER BY id
+LIMIT :limit
+"""
 
-def _dsn() -> str:
+_engine: Engine | None = None
+_engine_lock = threading.Lock()
+
+
+def _dsn() -> str: #data source name - strip schema from url
     raw = os.environ.get("POSTGRES_URL")
     if not raw:
         raise RuntimeError("POSTGRES_URL is not set")
     parts = urlsplit(raw)
     params = [(k, v) for k, v in parse_qsl(parts.query) if k != "schema"]
-    return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(params), parts.fragment))
+    return urlunsplit(("postgresql+psycopg", parts.netloc, parts.path, urlencode(params), ""))
 
 
-def _query(sql: str) -> pd.DataFrame:
-    with psycopg.connect(_dsn()) as conn:
-        with conn.cursor() as cur:
-            cur.execute(sql)
-            columns = [c.name for c in cur.description]
-            rows = cur.fetchall()
-    return pd.DataFrame(rows, columns=columns)
+def get_engine() -> Engine:
+    global _engine
+    if _engine is None:
+        with _engine_lock:
+            if _engine is None:
+                _engine = create_engine(_dsn(), pool_pre_ping=True)
+    return _engine
+
+
+def _query(sql: str, params: dict[str, int] | None = None) -> pd.DataFrame:
+    return pd.read_sql_query(text(sql), get_engine(), params=params)
 
 
 def load_interactions() -> pd.DataFrame:
@@ -52,3 +68,7 @@ def load_poll_hashtags() -> pd.DataFrame:
 
 def load_candidate_polls() -> pd.DataFrame:
     return _query(CANDIDATE_POLLS_SQL)
+
+
+def load_feed(limit: int = 9) -> pd.DataFrame:
+    return _query(FEED_SQL, params={"limit": limit})
