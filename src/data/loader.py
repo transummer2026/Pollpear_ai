@@ -1,9 +1,10 @@
-import os
 import threading
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import pandas as pd
 from sqlalchemy import Engine, create_engine, text
+
+from src.vault.client import from_env
 
 INTERACTIONS_SQL = """
 SELECT DISTINCT v.created_by AS user_id, o.poll_id AS poll_id
@@ -37,9 +38,7 @@ _engine_lock = threading.Lock()
 
 
 def _dsn() -> str: #data source name - strip schema from url
-    raw = os.environ.get("POSTGRES_URL")
-    if not raw:
-        raise RuntimeError("POSTGRES_URL is not set")
+    raw = from_env().read_kv("pollpear/db")["database_url"]
     parts = urlsplit(raw)
     params = [(k, v) for k, v in parse_qsl(parts.query) if k != "schema"]
     return urlunsplit(("postgresql+psycopg", parts.netloc, parts.path, urlencode(params), ""))
