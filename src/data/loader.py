@@ -20,17 +20,20 @@ JOIN hashtags h ON h.id = ph.hashtag_id
 """
 
 CANDIDATE_POLLS_SQL = """
-SELECT id AS poll_id, title, type, status, visibility
+SELECT id AS poll_id, title, created_by, published_at, created_at
 FROM polls
 WHERE status = 'active' AND visibility = 'public'
 """
 
-FEED_SQL = """
-SELECT id AS poll_id, title
-FROM polls
-WHERE status = 'active' AND visibility = 'public'
-ORDER BY id
-LIMIT :limit
+FRIENDSHIPS_SQL = """
+SELECT requester_id, addressee_id
+FROM friendships
+WHERE status = 'accepted'
+"""
+
+BLOCKS_SQL = """
+SELECT blocker_id, blocked_id
+FROM blocks
 """
 
 _engine: Engine | None = None
@@ -69,5 +72,9 @@ def load_candidate_polls() -> pd.DataFrame:
     return _query(CANDIDATE_POLLS_SQL)
 
 
-def load_feed(limit: int = 9) -> pd.DataFrame:
-    return _query(FEED_SQL, params={"limit": limit})
+def load_friendships() -> pd.DataFrame:
+    return _query(FRIENDSHIPS_SQL)
+
+
+def load_blocks() -> pd.DataFrame:
+    return _query(BLOCKS_SQL)

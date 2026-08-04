@@ -16,7 +16,11 @@ class FeedModel:
     poll_ids: list[int]
     vectorizer: TfidfVectorizer | None
     hashtag_matrix: np.ndarray
+    hashtag_poll_ids: list[int]
     interaction_poll_ids: list[int]
     item_similarity: np.ndarray
     popularity: pd.Series
     interactions: pd.DataFrame
+    candidates: pd.DataFrame
+    friendships: pd.DataFrame
+    blocks: pd.DataFrame
