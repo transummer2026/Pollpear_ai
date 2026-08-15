@@ -7,7 +7,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from src.models.feed_model import FeedModel
 
-WEIGHTS = {"content": 0.35, "covotes": 0.25, "recency": 0.2, "popularity": 0.1, "social": 0.1}
+WEIGHTS = {"content": 0.6, "covotes": 0.2, "recency": 0.1, "popularity": 0.05, "social": 0.05}
 RECENCY_HALF_LIFE_DAYS = 3.0
 
 
@@ -94,9 +94,16 @@ def _excluded_users(model: FeedModel, user_id: int) -> set[int]:
     return {int(user) for user in blocked} | {int(user) for user in blockers}
 
 
-def recommend(model: FeedModel, user_id: int, limit: int = 9, now: datetime | None = None) -> list[dict]:
+def recommend(
+    model: FeedModel,
+    user_id: int,
+    limit: int = 9,
+    now: datetime | None = None,
+    weights: dict[str, float] | None = None,
+) -> list[dict]:
     if model.candidates.empty:
         return []
+    blend = weights if weights is not None else WEIGHTS
     at = now if now is not None else datetime.now(UTC)
     interactions = model.interactions
     voted = (
@@ -121,7 +128,7 @@ def recommend(model: FeedModel, user_id: int, limit: int = 9, now: datetime | No
             "social": _social_scores(model, user_id, candidate_ids),
         }
     )
-    total = sum(weight * scores[name] for name, weight in WEIGHTS.items())
+    total = sum(weight * scores[name] for name, weight in blend.items())
     top = total.sort_values(ascending=False).head(limit)
     titles = dict(zip(candidate_ids, candidates["title"], strict=True))
     return [

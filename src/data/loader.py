@@ -36,6 +36,14 @@ SELECT blocker_id, blocked_id
 FROM blocks
 """
 
+TIMED_INTERACTIONS_SQL = """
+SELECT v.created_by AS user_id, o.poll_id AS poll_id, MIN(v.created_at) AS voted_at
+FROM votes v
+JOIN vote_options vo ON vo.vote_id = v.id
+JOIN options o ON o.id = vo.option_id
+GROUP BY v.created_by, o.poll_id
+"""
+
 _engine: Engine | None = None
 _engine_lock = threading.Lock()
 
@@ -78,3 +86,7 @@ def load_friendships() -> pd.DataFrame:
 
 def load_blocks() -> pd.DataFrame:
     return _query(BLOCKS_SQL)
+
+
+def load_timed_interactions() -> pd.DataFrame:
+    return _query(TIMED_INTERACTIONS_SQL)
