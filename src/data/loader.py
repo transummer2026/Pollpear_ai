@@ -22,7 +22,7 @@ JOIN hashtags h ON h.id = ph.hashtag_id
 CANDIDATE_POLLS_SQL = """
 SELECT id AS poll_id, title, created_by, published_at, created_at
 FROM polls
-WHERE status = 'active' AND visibility = 'public'
+WHERE status = 'active' AND visibility = 'public' AND deleted_at IS NULL
 """
 
 FRIENDSHIPS_SQL = """
