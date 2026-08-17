@@ -3,7 +3,8 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from uvicorn import run
 
 from src.api.logger import get_logger, setup_logging
-from src.data.loader import load_feed
+from src.scoring.recommender import recommend
+from src.training.trainer import train
 
 setup_logging()
 logger = get_logger(__name__)
@@ -11,6 +12,13 @@ logger = get_logger(__name__)
 app = FastAPI(title="Pollpear AI", version="0.1.0")
 
 Instrumentator().instrument(app).expose(app) #route /metrics for prometheus metrics
+
+
+def _model():
+	if getattr(app.state, "model", None) is None:
+		logger.info("No model in memory, training")
+		app.state.model = train()
+	return app.state.model
 
 
 @app.get("/health")
@@ -28,12 +36,22 @@ def root() -> dict[str, str]:
 @app.get("/feed/{user_id}")
 def get_feed(user_id: int):
 	logger.info(f"Feed requested for user_id: {user_id}")
-	rows = load_feed(9)
-	pairs = zip(rows.poll_id.tolist(), rows.title.tolist(), strict=True)
-	feed = [{"poll_id": int(pid), "title": str(title)} for pid, title in pairs]
+	feed = recommend(_model(), user_id)
 	logger.info(f"Feed returned for user_id: {user_id} ({len(feed)} polls)")
 	return {"user_id": user_id, "feed": feed}
 
+
+@app.post("/train")
+def post_train():
+	model = train()
+	app.state.model = model
+	logger.info(f"Model trained: {len(model.poll_ids)} candidate polls, {len(model.interactions)} interactions")
+	return {
+		"status": "trained",
+		"trained_at": model.trained_at.isoformat(),
+		"candidate_polls": len(model.poll_ids),
+		"interactions": len(model.interactions),
+	}
 
 
 def start() -> None:
