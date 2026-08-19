@@ -7,7 +7,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from src.models.feed_model import FeedModel
 
-WEIGHTS = {"content": 0.6, "covotes": 0.2, "recency": 0.1, "popularity": 0.05, "social": 0.05}
+WEIGHTS = {"content": 0.1, "covotes": 0.2, "recency": 0.3, "popularity": 0.3, "social": 0.1}
 RECENCY_HALF_LIFE_DAYS = 3.0
 POPULARITY_PRIOR_DAYS = 2.0
 

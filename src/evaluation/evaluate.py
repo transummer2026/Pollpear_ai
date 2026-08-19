@@ -18,9 +18,9 @@ FEED_SIZE = 9
 
 PRESETS = {
     "current": WEIGHTS,
+    "content-heavy": {"content": 0.6, "covotes": 0.2, "recency": 0.1, "popularity": 0.05, "social": 0.05},
     "balanced": {"content": 0.35, "covotes": 0.25, "recency": 0.2, "popularity": 0.1, "social": 0.1},
     "covotes-heavy": {"content": 0.2, "covotes": 0.5, "recency": 0.1, "popularity": 0.1, "social": 0.1},
-    "trends": {"content": 0.1, "covotes": 0.2, "recency": 0.3, "popularity": 0.3, "social": 0.1},
 }
 
 
