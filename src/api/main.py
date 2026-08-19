@@ -1,3 +1,7 @@
+import asyncio
+import threading
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
 from uvicorn import run
@@ -9,15 +13,46 @@ from src.training.trainer import train
 setup_logging()
 logger = get_logger(__name__)
 
-app = FastAPI(title="Pollpear AI", version="0.1.0")
+RETRAIN_INTERVAL_SECONDS = 300
+
+_train_lock = threading.Lock()
+
+
+def _locked_train():
+	with _train_lock:
+		return train()
+
+
+async def _retrain_forever() -> None:
+	while True:
+		await asyncio.sleep(RETRAIN_INTERVAL_SECONDS)
+		try:
+			model = await asyncio.to_thread(_locked_train)
+		except Exception:
+			logger.exception("Periodic retraining failed, keeping previous model")
+			continue
+		app.state.model = model
+		logger.info(f"Model retrained: {len(model.poll_ids)} candidate polls, {len(model.interactions)} interactions")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+	task = asyncio.create_task(_retrain_forever())
+	yield
+	task.cancel()
+
+
+app = FastAPI(title="Pollpear AI", version="0.1.0", lifespan=lifespan)
 
 Instrumentator().instrument(app).expose(app) #route /metrics for prometheus metrics
 
 
 def _model():
 	if getattr(app.state, "model", None) is None:
-		logger.info("No model in memory, training")
-		app.state.model = train()
+		with _train_lock:
+			if getattr(app.state, "model", None) is None:
+				logger.info("No model in memory, training")
+				app.state.model = train()
 	return app.state.model
 
 
@@ -39,19 +74,6 @@ def get_feed(user_id: int):
 	feed = recommend(_model(), user_id)
 	logger.info(f"Feed returned for user_id: {user_id} ({len(feed)} polls)")
 	return {"user_id": user_id, "feed": feed}
-
-
-@app.post("/train")
-def post_train():
-	model = train()
-	app.state.model = model
-	logger.info(f"Model trained: {len(model.poll_ids)} candidate polls, {len(model.interactions)} interactions")
-	return {
-		"status": "trained",
-		"trained_at": model.trained_at.isoformat(),
-		"candidate_polls": len(model.poll_ids),
-		"interactions": len(model.interactions),
-	}
 
 
 def start() -> None:
