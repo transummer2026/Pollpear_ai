@@ -7,8 +7,9 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from src.models.feed_model import FeedModel
 
-WEIGHTS = {"content": 0.6, "covotes": 0.2, "recency": 0.1, "popularity": 0.05, "social": 0.05}
+WEIGHTS = {"content": 0.1, "covotes": 0.2, "recency": 0.3, "popularity": 0.3, "social": 0.1}
 RECENCY_HALF_LIFE_DAYS = 3.0
+POPULARITY_PRIOR_DAYS = 2.0
 
 
 def _zeros(candidate_ids: list[int]) -> pd.Series:
@@ -47,11 +48,24 @@ def _covote_scores(model: FeedModel, voted: set[int], candidate_ids: list[int]) 
     )
 
 
-def _recency_scores(candidates: pd.DataFrame, now: datetime) -> pd.Series:
+def _age_days(candidates: pd.DataFrame, now: datetime) -> np.ndarray:
     published = pd.to_datetime(candidates["published_at"].fillna(candidates["created_at"]), utc=True)
-    age_days = (now - published).dt.total_seconds() / 86400.0
-    decay = np.exp(-(math.log(2) / RECENCY_HALF_LIFE_DAYS) * age_days.clip(lower=0.0))
-    return pd.Series(decay.to_numpy(), index=[int(poll_id) for poll_id in candidates["poll_id"]])
+    return ((now - published).dt.total_seconds() / 86400.0).clip(lower=0.0).to_numpy()
+
+
+def _recency_scores(candidates: pd.DataFrame, now: datetime) -> pd.Series:
+    decay = np.exp(-(math.log(2) / RECENCY_HALF_LIFE_DAYS) * _age_days(candidates, now))
+    return pd.Series(decay, index=[int(poll_id) for poll_id in candidates["poll_id"]])
+
+
+def _popularity_scores(
+    model: FeedModel, candidates: pd.DataFrame, candidate_ids: list[int], now: datetime
+) -> pd.Series:
+    counts = model.popularity.reindex(candidate_ids).fillna(0.0).to_numpy()
+    ages = np.maximum(_age_days(candidates, now), 1.0 / 24.0)
+    global_rate = counts.sum() / ages.sum() if ages.sum() > 0 else 0.0
+    rates = (counts + POPULARITY_PRIOR_DAYS * global_rate) / (ages + POPULARITY_PRIOR_DAYS)
+    return _normalized(pd.Series(rates, index=candidate_ids))
 
 
 def _friends_of(model: FeedModel, user_id: int) -> set[int]:
@@ -124,7 +138,7 @@ def recommend(
             "content": _content_scores(model, voted, candidate_ids),
             "covotes": _covote_scores(model, voted, candidate_ids),
             "recency": _recency_scores(candidates, at),
-            "popularity": _normalized(model.popularity.reindex(candidate_ids).fillna(0.0)),
+            "popularity": _popularity_scores(model, candidates, candidate_ids, at),
             "social": _social_scores(model, user_id, candidate_ids),
         }
     )
