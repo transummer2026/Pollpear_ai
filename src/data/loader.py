@@ -19,9 +19,16 @@ JOIN hashtags h ON h.id = ph.hashtag_id
 """
 
 CANDIDATE_POLLS_SQL = """
-SELECT id AS poll_id, title, created_by, published_at, created_at
-FROM polls
-WHERE status = 'active' AND visibility = 'public' AND deleted_at IS NULL
+SELECT p.id AS poll_id, p.title, p.created_by, p.published_at, p.created_at
+FROM polls p
+WHERE p.status = 'active' AND p.visibility = 'public' AND p.deleted_at IS NULL
+  AND (
+    p.room_id IS NULL
+    OR EXISTS (
+      SELECT 1 FROM rooms r
+      WHERE r.id = p.room_id AND r.visibility = 'public'
+    )
+  )
 """
 
 FRIENDSHIPS_SQL = """
