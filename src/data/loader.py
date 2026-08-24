@@ -7,10 +7,9 @@ from sqlalchemy import Engine, create_engine, text
 from src.vault.client import from_env
 
 INTERACTIONS_SQL = """
-SELECT DISTINCT v.created_by AS user_id, o.poll_id AS poll_id
+SELECT DISTINCT v.created_by AS user_id, v."pollId" AS poll_id
 FROM votes v
-JOIN vote_options vo ON vo.vote_id = v.id
-JOIN options o ON o.id = vo.option_id
+WHERE v.deleted_at IS NULL
 """
 
 POLL_HASHTAGS_SQL = """
@@ -37,11 +36,10 @@ FROM blocks
 """
 
 TIMED_INTERACTIONS_SQL = """
-SELECT v.created_by AS user_id, o.poll_id AS poll_id, MIN(v.created_at) AS voted_at
+SELECT v.created_by AS user_id, v."pollId" AS poll_id, MIN(v.created_at) AS voted_at
 FROM votes v
-JOIN vote_options vo ON vo.vote_id = v.id
-JOIN options o ON o.id = vo.option_id
-GROUP BY v.created_by, o.poll_id
+WHERE v.deleted_at IS NULL
+GROUP BY v.created_by, v."pollId"
 """
 
 _engine: Engine | None = None
