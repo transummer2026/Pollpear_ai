@@ -26,9 +26,9 @@ WHERE status = 'active' AND visibility = 'public' AND deleted_at IS NULL
 """
 
 FRIENDSHIPS_SQL = """
-SELECT requester_id, addressee_id
+SELECT user_a_id, user_b_id
 FROM friendships
-WHERE status = 'accepted'
+WHERE status = 'accepted' AND deleted_at IS NULL
 """
 
 BLOCKS_SQL = """

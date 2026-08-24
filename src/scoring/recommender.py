@@ -72,9 +72,9 @@ def _friends_of(model: FeedModel, user_id: int) -> set[int]:
     friendships = model.friendships
     if friendships.empty:
         return set()
-    requesters = friendships.loc[friendships["addressee_id"] == user_id, "requester_id"]
-    addressees = friendships.loc[friendships["requester_id"] == user_id, "addressee_id"]
-    return {int(user) for user in requesters} | {int(user) for user in addressees}
+    partners_b = friendships.loc[friendships["user_a_id"] == user_id, "user_b_id"]
+    partners_a = friendships.loc[friendships["user_b_id"] == user_id, "user_a_id"]
+    return {int(user) for user in partners_a} | {int(user) for user in partners_b}
 
 
 def _social_scores(model: FeedModel, user_id: int, candidate_ids: list[int]) -> pd.Series:
