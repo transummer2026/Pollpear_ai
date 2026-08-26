@@ -64,7 +64,7 @@ def build_model(
         popularity=popularity,
         interactions=interactions,
         candidates=candidates,
-        friendships=friendships if friendships is not None else pd.DataFrame(columns=["requester_id", "addressee_id"]),
+        friendships=friendships if friendships is not None else pd.DataFrame(columns=["user_a_id", "user_b_id"]),
         blocks=blocks if blocks is not None else pd.DataFrame(columns=["blocker_id", "blocked_id"]),
     )
 

@@ -7,10 +7,9 @@ from sqlalchemy import Engine, create_engine, text
 from src.vault.client import from_env
 
 INTERACTIONS_SQL = """
-SELECT DISTINCT v.created_by AS user_id, o.poll_id AS poll_id
+SELECT DISTINCT v.created_by AS user_id, v."pollId" AS poll_id
 FROM votes v
-JOIN vote_options vo ON vo.vote_id = v.id
-JOIN options o ON o.id = vo.option_id
+WHERE v.deleted_at IS NULL
 """
 
 POLL_HASHTAGS_SQL = """
@@ -20,15 +19,22 @@ JOIN hashtags h ON h.id = ph.hashtag_id
 """
 
 CANDIDATE_POLLS_SQL = """
-SELECT id AS poll_id, title, created_by, published_at, created_at
-FROM polls
-WHERE status = 'active' AND visibility = 'public' AND deleted_at IS NULL
+SELECT p.id AS poll_id, p.title, p.created_by, p.published_at, p.created_at
+FROM polls p
+WHERE p.status = 'active' AND p.visibility = 'public' AND p.deleted_at IS NULL
+  AND (
+    p.room_id IS NULL
+    OR EXISTS (
+      SELECT 1 FROM rooms r
+      WHERE r.id = p.room_id AND r.visibility = 'public'
+    )
+  )
 """
 
 FRIENDSHIPS_SQL = """
-SELECT requester_id, addressee_id
+SELECT user_a_id, user_b_id
 FROM friendships
-WHERE status = 'accepted'
+WHERE status = 'accepted' AND deleted_at IS NULL
 """
 
 BLOCKS_SQL = """
@@ -37,11 +43,10 @@ FROM blocks
 """
 
 TIMED_INTERACTIONS_SQL = """
-SELECT v.created_by AS user_id, o.poll_id AS poll_id, MIN(v.created_at) AS voted_at
+SELECT v.created_by AS user_id, v."pollId" AS poll_id, MIN(v.created_at) AS voted_at
 FROM votes v
-JOIN vote_options vo ON vo.vote_id = v.id
-JOIN options o ON o.id = vo.option_id
-GROUP BY v.created_by, o.poll_id
+WHERE v.deleted_at IS NULL
+GROUP BY v.created_by, v."pollId"
 """
 
 _engine: Engine | None = None
