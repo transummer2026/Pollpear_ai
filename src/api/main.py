@@ -1,8 +1,9 @@
 import asyncio
 import threading
 from contextlib import asynccontextmanager
+from typing import Annotated
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from prometheus_fastapi_instrumentator import Instrumentator
 from uvicorn import run
 
@@ -69,9 +70,9 @@ def root() -> dict[str, str]:
 
 
 @app.get("/feed/{user_id}")
-def get_feed(user_id: int):
-	logger.info(f"Feed requested for user_id: {user_id}")
-	feed = recommend(_model(), user_id)
+def get_feed(user_id: int, limit: Annotated[int, Query(ge=1, le=100)] = 9):
+	logger.info(f"Feed requested for user_id: {user_id} (limit={limit})")
+	feed = recommend(_model(), user_id, limit=limit)
 	logger.info(f"Feed returned for user_id: {user_id} ({len(feed)} polls)")
 	return {"user_id": user_id, "feed": feed}
 
