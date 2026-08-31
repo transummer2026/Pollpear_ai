@@ -12,6 +12,7 @@ from src.data.loader import (
     load_friendships,
     load_interactions,
     load_poll_hashtags,
+    load_room_memberships,
 )
 from src.models.feed_model import FeedModel, identity_analyzer
 
@@ -45,6 +46,7 @@ def build_model(
     candidates: pd.DataFrame,
     friendships: pd.DataFrame | None = None,
     blocks: pd.DataFrame | None = None,
+    room_memberships: pd.DataFrame | None = None,
 ) -> FeedModel:
     candidate_ids = [int(poll_id) for poll_id in candidates["poll_id"]]
     tagged_ids: set[int] = set() if poll_hashtags.empty else {int(poll_id) for poll_id in poll_hashtags["poll_id"]}
@@ -66,6 +68,9 @@ def build_model(
         candidates=candidates,
         friendships=friendships if friendships is not None else pd.DataFrame(columns=["user_a_id", "user_b_id"]),
         blocks=blocks if blocks is not None else pd.DataFrame(columns=["blocker_id", "blocked_id"]),
+        room_memberships=(
+            room_memberships if room_memberships is not None else pd.DataFrame(columns=["room_id", "user_id"])
+        ),
     )
 
 
@@ -76,6 +81,7 @@ def train() -> FeedModel:
         load_candidate_polls(),
         load_friendships(),
         load_blocks(),
+        load_room_memberships(),
     )
 
 

@@ -108,6 +108,13 @@ def _excluded_users(model: FeedModel, user_id: int) -> set[int]:
     return {int(user) for user in blocked} | {int(user) for user in blockers}
 
 
+def _rooms_of(model: FeedModel, user_id: int) -> set[int]:
+    memberships = model.room_memberships
+    if memberships.empty:
+        return set()
+    return {int(room) for room in memberships.loc[memberships["user_id"] == user_id, "room_id"]}
+
+
 def recommend(
     model: FeedModel,
     user_id: int,
@@ -126,8 +133,12 @@ def recommend(
         else {int(poll_id) for poll_id in interactions.loc[interactions["user_id"] == user_id, "poll_id"]}
     )
     excluded = _excluded_users(model, user_id)
-    keep = ~model.candidates["poll_id"].astype(int).isin(voted) & ~model.candidates["created_by"].astype(int).isin(
-        excluded
+    rooms = _rooms_of(model, user_id)
+    room_ids = model.candidates["room_id"]
+    keep = (
+        ~model.candidates["poll_id"].astype(int).isin(voted)
+        & ~model.candidates["created_by"].astype(int).isin(excluded)
+        & (room_ids.isna() | room_ids.fillna(-1).astype(int).isin(rooms))
     )
     candidates = model.candidates[keep]
     candidate_ids = [int(poll_id) for poll_id in candidates["poll_id"]]

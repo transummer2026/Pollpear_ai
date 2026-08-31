@@ -19,7 +19,7 @@ JOIN hashtags h ON h.id = ph.hashtag_id
 """
 
 CANDIDATE_POLLS_SQL = """
-SELECT p.id AS poll_id, p.title, p.created_by, p.published_at, p.created_at
+SELECT p.id AS poll_id, p.title, p.created_by, p.published_at, p.created_at, p.room_id
 FROM polls p
 WHERE p.status IN ('active', 'pending') AND p.visibility = 'public' AND p.deleted_at IS NULL
   AND (
@@ -40,6 +40,12 @@ WHERE status = 'accepted' AND deleted_at IS NULL
 BLOCKS_SQL = """
 SELECT blocker_id, blocked_id
 FROM blocks
+"""
+
+ROOM_MEMBERSHIPS_SQL = """
+SELECT room_id, user_id
+FROM room_members
+WHERE deleted_at IS NULL
 """
 
 TIMED_INTERACTIONS_SQL = """
@@ -91,6 +97,10 @@ def load_friendships() -> pd.DataFrame:
 
 def load_blocks() -> pd.DataFrame:
     return _query(BLOCKS_SQL)
+
+
+def load_room_memberships() -> pd.DataFrame:
+    return _query(ROOM_MEMBERSHIPS_SQL)
 
 
 def load_timed_interactions() -> pd.DataFrame:
