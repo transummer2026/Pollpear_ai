@@ -21,7 +21,7 @@ JOIN hashtags h ON h.id = ph.hashtag_id
 CANDIDATE_POLLS_SQL = """
 SELECT p.id AS poll_id, p.title, p.created_by, p.published_at, p.created_at
 FROM polls p
-WHERE p.status = 'active' AND p.visibility = 'public' AND p.deleted_at IS NULL
+WHERE p.status IN ('active', 'pending') AND p.visibility = 'public' AND p.deleted_at IS NULL
   AND (
     p.room_id IS NULL
     OR EXISTS (
