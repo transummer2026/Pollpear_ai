@@ -6,6 +6,7 @@ from src.data.loader import (
     load_candidate_polls,
     load_friendships,
     load_poll_hashtags,
+    load_room_memberships,
     load_timed_interactions,
 )
 from src.scoring.recommender import WEIGHTS, recommend
@@ -52,10 +53,11 @@ def evaluate() -> pd.DataFrame:
     poll_hashtags = load_poll_hashtags()
     friendships = load_friendships()
     blocks = load_blocks()
+    room_memberships = load_room_memberships()
 
     train, test, cutoff = split_interactions(timed)
     at = cutoff.tz_localize("UTC").to_pydatetime() if cutoff.tzinfo is None else cutoff.to_pydatetime()
-    model = build_model(train, poll_hashtags, candidates, friendships, blocks)
+    model = build_model(train, poll_hashtags, candidates, friendships, blocks, room_memberships)
     candidate_ids = model.poll_ids
     candidate_set = set(candidate_ids)
 

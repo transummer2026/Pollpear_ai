@@ -24,3 +24,4 @@ class FeedModel:
     candidates: pd.DataFrame
     friendships: pd.DataFrame
     blocks: pd.DataFrame
+    room_memberships: pd.DataFrame
