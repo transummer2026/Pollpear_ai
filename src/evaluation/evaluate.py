@@ -1,3 +1,10 @@
+"""Offline evaluation harness for the feed recommender.
+
+Uses a temporal train/test split (train on the earliest votes, test on the
+latest) and reports precision@k for several weight presets against a plain
+popularity baseline, so weight changes can be compared before shipping.
+"""
+
 import pandas as pd
 
 from src.api.logger import get_logger, setup_logging
@@ -17,6 +24,7 @@ logger = get_logger(__name__)
 TRAIN_RATIO = 0.8
 FEED_SIZE = 9
 
+# Weight blends to compare; "current" mirrors the production WEIGHTS.
 PRESETS = {
     "current": WEIGHTS,
     "content-heavy": {"content": 0.6, "covotes": 0.2, "recency": 0.1, "popularity": 0.05, "social": 0.05},
@@ -26,6 +34,13 @@ PRESETS = {
 
 
 def split_interactions(timed: pd.DataFrame, ratio: float = TRAIN_RATIO):
+    """Split votes in time at the ``ratio`` quantile of ``voted_at``.
+
+    Everything up to the cutoff becomes training data and everything after
+    becomes the test set, mimicking prediction of future votes and avoiding
+    look-ahead leakage. The cutoff timestamp is returned so scoring can use
+    it as "now".
+    """
     cutoff = timed["voted_at"].quantile(ratio)
     train = timed.loc[timed["voted_at"] <= cutoff, ["user_id", "poll_id"]].reset_index(drop=True)
     test = timed.loc[timed["voted_at"] > cutoff, ["user_id", "poll_id"]].reset_index(drop=True)
@@ -33,6 +48,11 @@ def split_interactions(timed: pd.DataFrame, ratio: float = TRAIN_RATIO):
 
 
 def popularity_baseline(train: pd.DataFrame, voted: set[int], candidate_ids: list[int], limit: int) -> list[int]:
+    """Rank candidates by training-set vote count as a non-personalized baseline.
+
+    Already-voted polls are excluded; if fewer than ``limit`` polls have any
+    votes, the list is padded with remaining candidates.
+    """
     counts = train.groupby("poll_id").size().sort_values(ascending=False)
     allowed = set(candidate_ids) - voted
     ranked = [int(poll_id) for poll_id in counts.index if int(poll_id) in allowed]
@@ -41,10 +61,22 @@ def popularity_baseline(train: pd.DataFrame, voted: set[int], candidate_ids: lis
 
 
 def precision_at_k(recommended: list[int], relevant: set[int], k: int) -> float:
+    """Fraction of the top-``k`` recommendations that are relevant.
+
+    Divides by ``k`` (not by the number returned), so short feeds are
+    penalized rather than flattered.
+    """
     return len(set(recommended[:k]) & relevant) / k
 
 
 def evaluate() -> pd.DataFrame:
+    """Score every preset and the baseline per user and return a report frame.
+
+    The model is trained only on the training split and scored at the split
+    cutoff time, so recency/popularity reflect what was known then. Users are
+    scored only when they have at least one test vote on a reachable
+    candidate poll.
+    """
     timed = load_timed_interactions()
     if timed.empty:
         logger.warning("No interactions in database, nothing to evaluate")
@@ -56,6 +88,7 @@ def evaluate() -> pd.DataFrame:
     room_memberships = load_room_memberships()
 
     train, test, cutoff = split_interactions(timed)
+    # Score at the split boundary; naive cutoffs are assumed UTC.
     at = cutoff.tz_localize("UTC").to_pydatetime() if cutoff.tzinfo is None else cutoff.to_pydatetime()
     model = build_model(train, poll_hashtags, candidates, friendships, blocks, room_memberships)
     candidate_ids = model.poll_ids
@@ -64,6 +97,7 @@ def evaluate() -> pd.DataFrame:
     rows = []
     evaluated_users = 0
     for user_id, group in test.groupby("user_id"):
+        # A test vote counts only if that poll is still a reachable candidate.
         relevant = {int(poll_id) for poll_id in group["poll_id"]} & candidate_set
         if not relevant:
             continue
